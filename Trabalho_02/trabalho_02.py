@@ -219,6 +219,44 @@ class SistemaInventario:
             else:
                 print("  Depende de: Nenhuma dependência registada.")
 
+    def calcular_analise_risco(self):
+        print("\n--- 🧮 Análise de Risco com Álgebra Linear ---")
+        
+        lista_eq = list(self.equipamentos.values())
+        lista_vul = list(self.vulnerabilidades.values())
+        
+        n = len(lista_eq)
+        m = len(lista_vul)
+        
+        if n == 0 or m == 0:
+            print("Erro: É necessário ter pelo menos um equipamento e uma vulnerabilidade cadastrados.")
+            return
+
+        # "Tradutores" de ID real para posição na matriz
+        mapa_idx_eq = {eq.id_ativo: i for i, eq in enumerate(lista_eq)}
+        mapa_idx_vul = {vul.id_vul: j for j, vul in enumerate(lista_vul)}
+
+        # Inicialização
+        M = np.zeros((n, m), dtype=np.float64)
+        v = np.zeros((m, 1), dtype=np.float64)
+        
+        # Preenchimento do placar (vetor v)
+        for j, vul in enumerate(lista_vul):
+            v[j, 0] = vul.severidade
+
+        # Preenchimento do tabuleiro (Matriz M)
+        for i, eq in enumerate(lista_eq):
+            for id_vul in eq.vulnerabilidades_ids:
+                if id_vul in mapa_idx_vul:
+                    j = mapa_idx_vul[id_vul]
+                    M[i, j] = 1.0
+
+        # Extraímos os fatores de exposição de cada equipamento
+        fatores = np.array([eq.fator_exposicao() for eq in lista_eq]).reshape(-1, 1)
+
+        # Cálculo do Risco Próprio (b)
+        b = (M @ v) * fatores
+
 
 # --- MENU PRINCIPAL ---
 sistema = SistemaInventario()
