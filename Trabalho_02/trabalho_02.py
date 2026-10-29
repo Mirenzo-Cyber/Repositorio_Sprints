@@ -1,4 +1,11 @@
+import sys
+
+# Força o terminal a ler e escrever em UTF-8
+sys.stdout.reconfigure(encoding='utf-8')
+sys.stdin.reconfigure(encoding='utf-8')
+
 import json
+import numpy as np
 
 # --- ETAPA 1: CLASSES (Orientação a Objetos, Herança e Polimorfismo) ---
 class Vulnerabilidade:
@@ -220,7 +227,7 @@ class SistemaInventario:
                 print("  Depende de: Nenhuma dependência registada.")
 
     def calcular_analise_risco(self):
-        print("\n--- 🧮 Análise de Risco com Álgebra Linear ---")
+        print("\n--- Analise de Risco com Algebra Linear ---")
         
         lista_eq = list(self.equipamentos.values())
         lista_vul = list(self.vulnerabilidades.values())
@@ -236,7 +243,7 @@ class SistemaInventario:
         mapa_idx_eq = {eq.id_ativo: i for i, eq in enumerate(lista_eq)}
         mapa_idx_vul = {vul.id_vul: j for j, vul in enumerate(lista_vul)}
 
-        # Inicialização
+        # Inicialização de M e v
         M = np.zeros((n, m), dtype=np.float64)
         v = np.zeros((m, 1), dtype=np.float64)
         
@@ -251,25 +258,45 @@ class SistemaInventario:
                     j = mapa_idx_vul[id_vul]
                     M[i, j] = 1.0
 
-        # Extraímos os fatores de exposição de cada equipamento
+        # Fatores de exposição e Risco Próprio (b)
         fatores = np.array([eq.fator_exposicao() for eq in lista_eq]).reshape(-1, 1)
-
-        # Cálculo do Risco Próprio (b)
         b = (M @ v) * fatores
 
+        # Inicializa e preenche a Matriz de Dependências A (n por n)
+        A = np.zeros((n, n), dtype=np.float64)
+        for i, eq in enumerate(lista_eq):
+            for id_destino_str, peso in eq.dependencias.items():
+                id_destino = int(id_destino_str)
+                if id_destino in mapa_idx_eq:
+                    k = mapa_idx_eq[id_destino]
+                    A[i, k] = float(peso)
+
+        # Cálculo do Risco Total (x) resolvendo (I - A)x = b
+        I = np.eye(n, dtype=np.float64)
+        x = np.linalg.solve(I - A, b)
+
+        # Exibição do Relatório de Risco
+        print(f"\n{'ID':<5} | {'Equipamento':<20} | {'Risco Proprio (b)':<18} | {'Risco Total (x)'}")
+        print("-" * 65)
+        for i, eq in enumerate(lista_eq):
+            risco_proprio = b[i, 0]
+            risco_total = x[i, 0]
+            print(f"{eq.id_ativo:<5} | {eq.nome:<20} | {risco_proprio:<18.2f} | {risco_total:.2f}")
+                    
 
 # --- MENU PRINCIPAL ---
 sistema = SistemaInventario()
 
 while True:
-    print("\n--- 🛡️ Sistema de Inventário e Análise de Risco 🛡️ ---")
+    print("\n--- Sistema de Inventario e Analise de Risco ---")
     print("1. Cadastrar Equipamento")
     print("2. Cadastrar / Associar Vulnerabilidade")
     print("3. Cadastrar Dependência entre Equipamentos")
     print("4. Listar Equipamentos e Dependências")
-    print("5. Sair")
+    print("5. Calcular Análise de Risco")
+    print("6. Sair")
 
-    opcao = input("Escolha uma opção (1 a 5): ").strip()
+    opcao = input("Escolha uma opção (1 a 6): ").strip()
 
     if opcao == "1":
         sistema.cadastrar_ativo()
@@ -280,6 +307,8 @@ while True:
     elif opcao == "4":
         sistema.listar_ativos()
     elif opcao == "5":
+        sistema.calcular_analise_risco()
+    elif opcao == "6":
         print("\nA encerrar o sistema...")
         break
     else:
