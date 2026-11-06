@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "nome": "Servidor de Base de Dados Central",
+    "categoria": "Hardware",
+    "nivelRisco": "Alto"
+  },
+  {
+    "id": 2,
+    "nome": "Firewall de Perímetro",
+    "categoria": "Rede",
+    "nivelRisco": "Médio"
+  },
+  {
+    "id": 3,
+    "nome": "Software de Gestão de RH",
+    "categoria": "Software",
+    "nivelRisco": "Baixo"
+  }
+]

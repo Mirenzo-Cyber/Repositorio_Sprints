@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventário de Ativos - Cibersegurança</title>
+    <style>
+        /* 
+           Criando as variáveis CSS para padronizar as cores do nosso projeto.
+           Isto facilita muito caso precisemos mudar uma cor no futuro! 
+        */
+        :root {
+            --cor-fundo: #f4f7f6;
+            --cor-texto: #333333;
+            --cor-primaria: #2c3e50;
+            --cor-cartao: #ffffff;
+            --cor-borda: #e0e0e0;
+            --cor-risco-alto: #e74c3c;
+            --cor-risco-medio: #f39c12;
+            --cor-risco-baixo: #2ecc71;
+        }
+
+        /* Configurações básicas para toda a página */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--cor-fundo);
+            color: var(--cor-texto);
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Estilizando o cabeçalho da página */
+        header {
+            background-color: var(--cor-primaria);
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* 
+           Aqui aplicamos o CSS Grid! 
+           Ele vai organizar os nossos cartões de forma automática e responsiva.
+        */
+        .grade-ativos {
+            display: grid;
+            /* 
+               Cria colunas que se adaptam ao tamanho do ecrã (telemóvel ou computador).
+               Terão no mínimo 300px de largura, e preenchem o espaço restante (1fr).
+            */
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px; /* Espaço entre os cartões */
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto; /* Centraliza a grade no ecrã */
+        }
+
+        /* Desenhando como cada cartão de ativo se vai parecer */
+        .cartao {
+            background-color: var(--cor-cartao);
+            border: 1px solid var(--cor-borda);
+            border-radius: 8px; /* Deixa as bordas arredondadas */
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Dá um efeito de sombra */
+            transition: transform 0.2s; /* Animação suave ao passar o rato */
+        }
+        
+        /* Um pequeno efeito quando passamos o rato por cima do cartão */
+        .cartao:hover {
+            transform: scale(1.02);
+        }
+
+        .cartao h3 {
+            margin-top: 0;
+            color: var(--cor-primaria);
+        }
+
+        /* Cores diferentes para destacar o nível de risco */
+        .risco-alto {
+            color: var(--cor-risco-alto);
+            font-weight: bold;
+        }
+        .risco-medio {
+            color: var(--cor-risco-medio);
+            font-weight: bold;
+        }
+        .risco-baixo {
+            color: var(--cor-risco-baixo);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Painel de Ativos - Cibersegurança</h1>
+        <p>Trabalho 02: Listagem Dinâmica (Grid + JS)</p>
+    </header>
+
+    <main>
+        <!-- Esta é a div vazia onde o JavaScript vai injetar os dados -->
+        <div id="lista-ativos" class="grade-ativos">
+            <!-- Os cartões vão aparecer aqui! -->
+        </div>
+    </main>
+
+    <script>
+        // Passo 1: Criamos uma lista (array) contendo vários itens (objetos).
+        // Cada objeto representa um ativo de TI com as suas características.
+        // Estes são os dados simulados do seu Trabalho 02 de Inventário de Cibersegurança!
+        const ativosDeTI = [
+            { id: 1, nome: "Servidor de Base de Dados", categoria: "Hardware", nivelRisco: "Alto" },
+            { id: 2, nome: "Firewall Principal", categoria: "Rede", nivelRisco: "Médio" },
+            { id: 3, nome: "Sistema de Recursos Humanos", categoria: "Software", nivelRisco: "Baixo" },
+            { id: 4, nome: "Portátil da Diretoria", categoria: "Hardware", nivelRisco: "Alto" },
+            { id: 5, nome: "Serviço de Nuvem (AWS)", categoria: "Nuvem", nivelRisco: "Médio" },
+            { id: 6, nome: "Router Wi-Fi Visitantes", categoria: "Rede", nivelRisco: "Baixo" }
+        ];
+
+        // Passo 2: Apanhamos a div vazia lá do HTML usando o ID dela.
+        // É aqui que vamos colocar a nossa lista gerada dinamicamente.
+        const containerDeAtivos = document.getElementById('lista-ativos');
+
+        // Passo 3: Usamos um ciclo de repetição (forEach) para passar por cada item da nossa lista.
+        // Para cada 'ativo' na lista, faremos o seguinte:
+        ativosDeTI.forEach(function(ativo) {
+            
+            // Criamos um novo elemento do tipo 'div' para representar o cartão do ativo
+            const cartao = document.createElement('div');
+            
+            // Adicionamos a classe 'cartao' para que ele ganhe o estilo que fizemos no CSS
+            cartao.classList.add('cartao');
+            
+            // Uma pequena ajuda: usamos uma função para tirar os acentos e colocar em minúsculas
+            // Assim o CSS consegue encontrar a classe correta (ex: 'Médio' vira 'medio')
+            const classeRisco = ativo.nivelRisco.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+            // Preenchemos o interior (innerHTML) do cartão com os dados do objeto atual
+            cartao.innerHTML = `
+                <h3>${ativo.nome}</h3>
+                <p><strong>Categoria:</strong> ${ativo.categoria}</p>
+                <p><strong>Nível de Risco:</strong> <span class="risco-${classeRisco}">${ativo.nivelRisco}</span></p>
+            `;
+            
+            // Finalmente, colocamos o cartão pronto dentro do nosso contentor principal na página
+            containerDeAtivos.appendChild(cartao);
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,5 @@
+AT-001;SRV-DB-PROD;Carlos Silva;Data Center;Servidores;CVE-2024-1001,Porta 22 exposta,TLS 1.0 ativo
+AT-002;SW-CORE-01;Fernanda Costa;Infraestrutura;Switches;SNMP padrao (public)
+AT-003;NB-SEC-04;Marcos Oliveira;SOC / Seguranca;Notebooks;
+AT-004;PC-FIN-12;Ana Souza;Financeiro;Computadores;SMB v1 habilitado,Antivirus desatualizado
+AT-005;SRV-WEB-APP;Carlos Silva;Data Center;Servidores;Headers HTTP inseguros
