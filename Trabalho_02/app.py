@@ -21,6 +21,14 @@ def obter_equipamentos():
     # Retorna a lista em JSON com o código 200 (OK / Sucesso)
     return jsonify(lista_equipamentos), 200
 
+# --- NOVO: ROTA Buscar Equipamento Específico por ID (GET) ---
+@app.route('/equipamentos/<int:id_ativo>', methods=['GET'])
+def obter_equipamento_por_id(id_ativo):
+    if id_ativo not in sistema.equipamentos:
+        return jsonify({"erro": "Equipamento não encontrado."}), 404
+    
+    return jsonify(sistema.equipamentos[id_ativo].to_dict()), 200
+
 # --- ROTA 2: Cadastrar Novo Equipamento (POST = enviar/criar dados) ---
 @app.route('/equipamentos', methods=['POST'])
 def criar_equipamento():
@@ -64,5 +72,5 @@ def relatorio_risco():
 
 # Garante que o servidor só inicie quando este arquivo for executado diretamente
 if __name__ == '__main__':
-    # debug=True reinicia o servidor automaticamente ao salvar alterações no código
-    app.run(debug=True, port=5000)
+    # debug=False desativa o modo de depuração para produção
+    app.run(host='0.0.0.0', port=5000, debug=False)
