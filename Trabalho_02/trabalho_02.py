@@ -1,11 +1,12 @@
 import sys
 
-# Força o terminal a ler e escrever em UTF-8
+# Força o terminal a ler e escrever em UTF-8 para evitar erros com acentos
 sys.stdout.reconfigure(encoding='utf-8')
 sys.stdin.reconfigure(encoding='utf-8')
 
 import json
 import numpy as np
+
 
 # --- ETAPA 1: CLASSES (Orientação a Objetos, Herança e Polimorfismo) ---
 class Vulnerabilidade:
@@ -16,6 +17,7 @@ class Vulnerabilidade:
         self.severidade = float(severidade)  # Valor numérico para o vetor v
         self.status = status
 
+    # Converte o objeto em dicionário para facilitar a gravação no JSON
     def to_dict(self):
         return self.__dict__
 
@@ -30,10 +32,11 @@ class Equipamento:
         self.vulnerabilidades_ids = []  # IDs das vulnerabilidades associadas (Matriz M)
         self.dependencias = {}          # {"id_alvo": fracao_risco} (Matriz A)
 
-    # Polimorfismo: cada classe derivada sobrescreve o seu fator de exposição
+    # Polimorfismo: cada subclasse define o seu próprio fator de exposição
     def fator_exposicao(self):
         return 1.0
 
+    # Organiza os dados do equipamento em dicionário para salvar em JSON ou enviar pela API
     def to_dict(self):
         return {
             "id_ativo": self.id_ativo,
@@ -46,7 +49,7 @@ class Equipamento:
         }
 
 
-# Subclasses com polimorfismo aplicado às categorias
+# Subclasses que herdam de Equipamento e alteram o fator de exposição
 class Computador(Equipamento):
     def fator_exposicao(self):
         return 1.0
@@ -70,10 +73,11 @@ class Switch(Equipamento):
 # --- ETAPAS 2 e 3: GESTÃO DO SISTEMA, JSON, CADASTROS E DEPENDÊNCIAS ---
 class SistemaInventario:
     def __init__(self):
-        self.equipamentos = {}      # id_ativo -> Objeto Equipamento
-        self.vulnerabilidades = {}  # id_vul -> Objeto Vulnerabilidade
+        self.equipamentos = {}      # Guarda os equipamentos: id_ativo -> Objeto Equipamento
+        self.vulnerabilidades = {}  # Guarda as vulnerabilidades: id_vul -> Objeto Vulnerabilidade
         self.carregar_dados()
 
+    # Instancia a classe correta de acordo com o tipo de equipamento escolhido
     def criar_objeto_equipamento(self, id_ativo, nome, responsavel, setor, tipo):
         mapa_classes = {
             "COMPUTADORES": Computador,
@@ -84,8 +88,8 @@ class SistemaInventario:
         classe_escolhida = mapa_classes.get(tipo, Equipamento)
         return classe_escolhida(id_ativo, nome, responsavel, setor, tipo)
 
+    # Guarda as listas de equipamentos e vulnerabilidades nos ficheiros JSON
     def salvar_dados(self):
-        # Requisito 2: Persistência em listas de objetos JSON
         with open("equipamentos.json", "w", encoding="utf-8") as f:
             lista_eq = [eq.to_dict() for eq in self.equipamentos.values()]
             json.dump(lista_eq, f, indent=4, ensure_ascii=False)
@@ -94,6 +98,7 @@ class SistemaInventario:
             lista_vul = [vul.to_dict() for vul in self.vulnerabilidades.values()]
             json.dump(lista_vul, f, indent=4, ensure_ascii=False)
 
+    # Lê os ficheiros JSON ao iniciar o programa e recria os objetos na memória
     def carregar_dados(self):
         try:
             with open("equipamentos.json", "r", encoding="utf-8") as f:
@@ -182,7 +187,7 @@ class SistemaInventario:
                 print("Erro: Equipamento de destino não encontrado.")
                 return
 
-            # Regra: Um ativo não pode depender de si mesmo (A_ii = 0)
+            # Regra: Um ativo não pode depender de si mesmo (diagonal principal A_ii = 0)
             if id_origem == id_destino:
                 print("Erro: Um equipamento não pode depender de si mesmo (A_ii deve ser 0).")
                 return
@@ -197,7 +202,7 @@ class SistemaInventario:
             # Soma das dependências já cadastradas na linha deste equipamento
             soma_atual = sum(float(v) for k, v in eq.dependencias.items() if k != str(id_destino))
 
-            # Regra: A soma dos elementos da linha de A deve ser < 1 para garantir invertibilidade
+            # Regra: A soma dos elementos da linha de A deve ser < 1 para garantir que a matriz seja invertível
             if soma_atual + peso >= 1.0:
                 print(f"Erro: A soma das dependências ficaria em {soma_atual + peso:.2f}.")
                 print("Regra violada: A soma da linha em A deve ser estritamente menor que 1.0.")
@@ -226,6 +231,7 @@ class SistemaInventario:
             else:
                 print("  Depende de: Nenhuma dependência registada.")
 
+    # Método que exibe o cálculo de risco diretamente no terminal
     def calcular_analise_risco(self):
         print("\n--- Analise de Risco com Algebra Linear ---")
         
@@ -239,26 +245,26 @@ class SistemaInventario:
             print("Erro: É necessário ter pelo menos um equipamento e uma vulnerabilidade cadastrados.")
             return
 
-        # "Tradutores" de ID real para posição na matriz
+        # Dicionários que mapeiam o ID real para o índice correspondente na matriz
         mapa_idx_eq = {eq.id_ativo: i for i, eq in enumerate(lista_eq)}
         mapa_idx_vul = {vul.id_vul: j for j, vul in enumerate(lista_vul)}
 
-        # Inicialização de M e v
+        # Inicializa a Matriz M e o vetor v com zeros
         M = np.zeros((n, m), dtype=np.float64)
         v = np.zeros((m, 1), dtype=np.float64)
         
-        # Preenchimento do placar (vetor v)
+        # Preenche o vetor v com as severidades
         for j, vul in enumerate(lista_vul):
             v[j, 0] = vul.severidade
 
-        # Preenchimento do tabuleiro (Matriz M)
+        # Preenche a Matriz M marcando 1.0 onde há vulnerabilidade associada
         for i, eq in enumerate(lista_eq):
             for id_vul in eq.vulnerabilidades_ids:
                 if id_vul in mapa_idx_vul:
                     j = mapa_idx_vul[id_vul]
                     M[i, j] = 1.0
 
-        # Fatores de exposição e Risco Próprio (b)
+        # Calcula o Risco Próprio (b) aplicando o fator de exposição de cada equipamento
         fatores = np.array([eq.fator_exposicao() for eq in lista_eq]).reshape(-1, 1)
         b = (M @ v) * fatores
 
@@ -271,45 +277,107 @@ class SistemaInventario:
                     k = mapa_idx_eq[id_destino]
                     A[i, k] = float(peso)
 
-        # Cálculo do Risco Total (x) resolvendo (I - A)x = b
+        # Calcula o Risco Total (x) resolvendo o sistema linear (I - A)x = b
         I = np.eye(n, dtype=np.float64)
         x = np.linalg.solve(I - A, b)
 
-        # Exibição do Relatório de Risco
+        # Exibe a tabela com o relatório no terminal
         print(f"\n{'ID':<5} | {'Equipamento':<20} | {'Risco Proprio (b)':<18} | {'Risco Total (x)'}")
         print("-" * 65)
         for i, eq in enumerate(lista_eq):
             risco_proprio = b[i, 0]
             risco_total = x[i, 0]
             print(f"{eq.id_ativo:<5} | {eq.nome:<20} | {risco_proprio:<18.2f} | {risco_total:.2f}")
-                    
+
+    # Versão adaptada para a API Flask: devolve os resultados numa lista de dicionários para converter em JSON
+    def calcular_analise_risco_api(self):
+        lista_eq = list(self.equipamentos.values())
+        lista_vul = list(self.vulnerabilidades.values())
+        
+        n = len(lista_eq)
+        m = len(lista_vul)
+        
+        # Valida se existem dados suficientes antes de montar as matrizes
+        if n == 0 or m == 0:
+            return {"erro": "É necessário ter pelo menos um equipamento e uma vulnerabilidade cadastrados."}
+
+        # Mapeia o ID real de cada objeto para a sua posição (índice) na matriz
+        mapa_idx_eq = {eq.id_ativo: i for i, eq in enumerate(lista_eq)}
+        mapa_idx_vul = {vul.id_vul: j for j, vul in enumerate(lista_vul)}
+
+        # Inicializa a Matriz de Vulnerabilidades (M) e o Vetor de Severidade (v) com zeros
+        M = np.zeros((n, m), dtype=np.float64)
+        v = np.zeros((m, 1), dtype=np.float64)
+        
+        # Preenche o vetor v com a severidade de cada vulnerabilidade
+        for j, vul in enumerate(lista_vul):
+            v[j, 0] = vul.severidade
+
+        # Marca 1.0 na Matriz M nas posições onde o equipamento possui a vulnerabilidade
+        for i, eq in enumerate(lista_eq):
+            for id_vul in eq.vulnerabilidades_ids:
+                if id_vul in mapa_idx_vul:
+                    j = mapa_idx_vul[id_vul]
+                    M[i, j] = 1.0
+
+        # Calcula o risco próprio (b) multiplicando (M @ v) pelo fator de exposição de cada tipo
+        fatores = np.array([eq.fator_exposicao() for eq in lista_eq]).reshape(-1, 1)
+        b = (M @ v) * fatores
+
+        # Inicializa e preenche a Matriz de Dependências (A) de tamanho n por n
+        A = np.zeros((n, n), dtype=np.float64)
+        for i, eq in enumerate(lista_eq):
+            for id_destino_str, peso in eq.dependencias.items():
+                id_destino = int(id_destino_str)
+                if id_destino in mapa_idx_eq:
+                    k = mapa_idx_eq[id_destino]
+                    A[i, k] = float(peso)
+
+        # Cria a Matriz Identidade (I) e resolve o sistema linear (I - A)x = b
+        I = np.eye(n, dtype=np.float64)
+        x = np.linalg.solve(I - A, b)
+
+        # Organiza os resultados calculados numa lista para enviar pela API
+        relatorio = []
+        for i, eq in enumerate(lista_eq):
+            relatorio.append({
+                "id_ativo": eq.id_ativo,
+                "nome": eq.nome,
+                "risco_proprio": round(float(b[i, 0]), 2),  # Arredonda para 2 casas decimais
+                "risco_total": round(float(x[i, 0]), 2)
+            })
+            
+        return relatorio
+
 
 # --- MENU PRINCIPAL ---
-sistema = SistemaInventario()
+# Impede que o menu do terminal trave o Flask quando este ficheiro é importado no app.py
+if __name__ == '__main__':
+    sistema = SistemaInventario()
 
-while True:
-    print("\n--- Sistema de Inventario e Analise de Risco ---")
-    print("1. Cadastrar Equipamento")
-    print("2. Cadastrar / Associar Vulnerabilidade")
-    print("3. Cadastrar Dependência entre Equipamentos")
-    print("4. Listar Equipamentos e Dependências")
-    print("5. Calcular Análise de Risco")
-    print("6. Sair")
+    while True:
+        print("\n--- Sistema de Inventario e Analise de Risco ---")
+        print("1. Cadastrar Equipamento")
+        print("2. Cadastrar / Associar Vulnerabilidade")
+        print("3. Cadastrar Dependência entre Equipamentos")
+        print("4. Listar Equipamentos e Dependências")
+        print("5. Calcular Análise de Risco")
+        print("6. Sair")
 
-    opcao = input("Escolha uma opção (1 a 6): ").strip()
+        opcao = input("Escolha uma opção (1 a 6): ").strip()
 
-    if opcao == "1":
-        sistema.cadastrar_ativo()
-    elif opcao == "2":
-        sistema.cadastrar_vulnerabilidade()
-    elif opcao == "3":
-        sistema.cadastrar_dependencia()
-    elif opcao == "4":
-        sistema.listar_ativos()
-    elif opcao == "5":
-        sistema.calcular_analise_risco()
-    elif opcao == "6":
-        print("\nA encerrar o sistema...")
-        break
-    else:
-        print("Opção inválida. Tente novamente.")
+        if opcao == "1":
+            sistema.cadastrar_ativo()
+        elif opcao == "2":
+            sistema.cadastrar_vulnerabilidade()
+        elif opcao == "3":
+            sistema.cadastrar_dependencia()
+        elif opcao == "4":
+            sistema.listar_ativos()
+        elif opcao == "5":
+            sistema.calcular_analise_risco()
+        elif opcao == "6":
+            print("\nA encerrar o sistema...")
+            break
+        else:
+            print("Opção inválida. Tente novamente.")
